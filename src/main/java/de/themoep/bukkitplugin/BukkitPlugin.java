@@ -25,6 +25,7 @@ import org.apache.commons.lang.WordUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -97,6 +98,12 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
         getServer().getMessenger().registerOutgoingPluginChannel(this, INFO_CHANNEL);
         getServer().getMessenger().registerIncomingPluginChannel(this, INFO_CHANNEL, (channel, player, data) -> sendInfo(player));
         getServer().getPluginManager().registerEvents(this, this);
+        PluginCommand command = getCommand(getName().toLowerCase(Locale.ROOT));
+        if (command != null && command.getPlugin() == this) {
+            command.setExecutor(this);
+        } else {
+            getLogger().severe("Unable to register plugin as it was not defined in the plugin.yml?");
+        }
     }
 
     @Override
