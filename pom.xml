@@ -25,7 +25,7 @@
     <groupId>de.themoep</groupId>
     <artifactId>bukkitplugin</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>pom</packaging>
+    <packaging>jar</packaging>
 
     <description>Bukkit plugin helper</description>
     <properties>
