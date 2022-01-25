@@ -59,6 +59,7 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
     private String licenseTerms = null;
     private String sourceLink = null;
     private String commandAlias;
+    private String loginMessage;
 
     public BukkitPlugin() {
         super();
@@ -118,13 +119,18 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
                 }
             }
             getLogger().info("More info about the plugin" + (getSourceLink() != null ? " like the source" : "") + ": /" + command.getName() + " info");
-            if (shouldInformUser() && command.getPermission() != null) {
-                Permission permission = getServer().getPluginManager().getPermission(command.getPermission());
-                if (permission == null) {
-                    getServer().getPluginManager().addPermission(new Permission(command.getPermission(), PermissionDefault.TRUE));
-                } else if (!permission.getDefault().getValue(false)) {
-                    getLogger().warning("Potentially permission default for command permission '" + permission.getName() + "'!" +
-                            "Normal players need to access that plugin to comply with the license requirements. Please make sure to grant it to them!");
+            if (shouldInformUser()) {
+                loginMessage = ChatColor.DARK_GRAY + "Using " + ChatColor.GRAY + getName() + ChatColor.DARK_GRAY
+                        + (getLicense() != null ? " licensed under " + ChatColor.GRAY + getLicense() + ChatColor.DARK_GRAY : "")
+                        + ". More info: " + ChatColor.GRAY + "/" + commandAlias + " info";
+                if (command.getPermission() != null) {
+                    Permission permission = getServer().getPluginManager().getPermission(command.getPermission());
+                    if (permission == null) {
+                        getServer().getPluginManager().addPermission(new Permission(command.getPermission(), PermissionDefault.TRUE));
+                    } else if (!permission.getDefault().getValue(false)) {
+                        getLogger().warning("Potentially permission default for command permission '" + permission.getName() + "'!" +
+                                "Normal players need to access that plugin to comply with the license requirements. Please make sure to grant it to them!");
+                    }
                 }
             }
         } else {
@@ -223,10 +229,9 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        if (getLicense() != null && shouldInformUser()) {
-            String message = ChatColor.DARK_GRAY + "Using " + ChatColor.GRAY + getName() + ChatColor.DARK_GRAY + " licensed under " + ChatColor.GRAY + getLicense() + ChatColor.DARK_GRAY + ". More info: " + ChatColor.GRAY + "/" + commandAlias + " info";
+        if (shouldInformUser()) {
             if ("chat".equals(System.getProperty(DISPLAY_TYPE_KEY))) {
-                event.getPlayer().sendMessage(message);
+                event.getPlayer().sendMessage(loginMessage);
             } else {
                 int delay = Integer.getInteger(ACTIONBAR_DELAY_KEY, 1);
                 System.setProperty(ACTIONBAR_DELAY_KEY, String.valueOf(delay + 1));
@@ -234,7 +239,7 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
                 getServer().getScheduler().runTaskLater(this, () -> {
                     Player player = getServer().getPlayer(playerId);
                     if (player != null) {
-                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message));
+                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(loginMessage));
                     }
                 }, delay * 3 * 20L);
             }
