@@ -31,6 +31,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
@@ -120,6 +121,7 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
             }
             getLogger().info("More info about the plugin" + (getSourceLink() != null ? " like the source" : "") + ": /" + command.getName() + " info");
             if (shouldInformUser()) {
+                getServer().getPluginManager().registerEvents(new InfoListener(), this);
                 loginMessage = ChatColor.DARK_GRAY + "Using " + ChatColor.GRAY + getName() + ChatColor.DARK_GRAY
                         + (getLicense() != null ? " licensed under " + ChatColor.GRAY + getLicense() + ChatColor.DARK_GRAY : "")
                         + ". More info: " + ChatColor.GRAY + "/" + commandAlias + " info";
@@ -227,22 +229,28 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
         );
     }
 
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        if (shouldInformUser()) {
+    public class InfoListener implements Listener {
+
+        @EventHandler
+        public void onPlayerJoin(PlayerJoinEvent event) {
             if ("chat".equals(System.getProperty(DISPLAY_TYPE_KEY))) {
                 event.getPlayer().sendMessage(loginMessage);
             } else {
-                int delay = Integer.getInteger(ACTIONBAR_DELAY_KEY, 1);
-                System.setProperty(ACTIONBAR_DELAY_KEY, String.valueOf(delay + 1));
+                int delay = Integer.getInteger(ACTIONBAR_DELAY_KEY + ":" + event.getPlayer().getName(), 1);
+                System.setProperty(ACTIONBAR_DELAY_KEY + ":" + event.getPlayer().getName(), String.valueOf(delay + 1));
                 UUID playerId = event.getPlayer().getUniqueId();
-                getServer().getScheduler().runTaskLater(this, () -> {
+                getServer().getScheduler().runTaskLater(BukkitPlugin.this, () -> {
                     Player player = getServer().getPlayer(playerId);
                     if (player != null) {
                         player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(loginMessage));
                     }
                 }, delay * 3 * 20L);
             }
+        }
+
+        @EventHandler
+        public void onPlayerQuit(PlayerQuitEvent event) {
+            System.clearProperty(ACTIONBAR_DELAY_KEY + ":" + event.getPlayer().getName());
         }
     }
 
