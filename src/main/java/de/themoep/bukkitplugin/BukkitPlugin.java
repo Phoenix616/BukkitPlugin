@@ -33,15 +33,21 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.PluginDisableEvent;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.metadata.MetadataValue;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.JavaPluginLoader;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
@@ -52,8 +58,8 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
 
     private Timer timer;
     private boolean enableCalled = false;
-    private static final String DISPLAY_TYPE_KEY = "bukkitplugin.license.display";
-    private static final String ACTIONBAR_DELAY_KEY = "bukkitplugin.license.actionbardelay";
+    private static final String DISPLAY_TYPE_KEY = "bukkitplugin.info.display";
+    private static final String MESSAGE_KEY = "bukkitplugin.info.message";
 
     private boolean informUser = false;
     private String license = null;
@@ -148,6 +154,7 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
             if (shouldInformUser()) {
                 getLogger().severe("Plugin requires that the user has access to more information so the info command is required!");
                 getServer().getScheduler().runTaskLater(this, () -> getServer().getPluginManager().disablePlugin(this), 1);
+                informUser = false;
             }
         }
     }
@@ -231,26 +238,52 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
 
     public class InfoListener implements Listener {
 
+        private final Map<UUID, BukkitTask> infoTasks = new HashMap<>();
+
         @EventHandler
         public void onPlayerJoin(PlayerJoinEvent event) {
             if ("chat".equals(System.getProperty(DISPLAY_TYPE_KEY))) {
                 event.getPlayer().sendMessage(loginMessage);
             } else {
-                int delay = Integer.getInteger(ACTIONBAR_DELAY_KEY + ":" + event.getPlayer().getName(), 1);
-                System.setProperty(ACTIONBAR_DELAY_KEY + ":" + event.getPlayer().getName(), String.valueOf(delay + 1));
-                UUID playerId = event.getPlayer().getUniqueId();
-                getServer().getScheduler().runTaskLater(BukkitPlugin.this, () -> {
-                    Player player = getServer().getPlayer(playerId);
-                    if (player != null) {
-                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(loginMessage));
-                    }
-                }, delay * 3 * 20L);
+                List<MetadataValue> registeredInfo = event.getPlayer().getMetadata(MESSAGE_KEY);
+                event.getPlayer().setMetadata(MESSAGE_KEY, new FixedMetadataValue(BukkitPlugin.this, loginMessage));
+                if (registeredInfo.isEmpty()) {
+                    UUID playerId = event.getPlayer().getUniqueId();
+                    infoTasks.put(playerId, new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            Player player = getServer().getPlayer(playerId);
+                            if (player != null) {
+                                List<MetadataValue> messageList = player.getMetadata(MESSAGE_KEY);
+                                if (messageList.isEmpty()) {
+                                    cancel();
+                                } else {
+                                    MetadataValue message = messageList.get(0);
+                                    player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message.asString()));
+                                    if (message.getOwningPlugin() != null) {
+                                        player.removeMetadata(MESSAGE_KEY, message.getOwningPlugin());
+                                    }
+                                    if (messageList.size() == 1) {
+                                        // last message was sent
+                                        cancel();
+                                    }
+                                }
+                            } else {
+                                // Player is no longer online and task wasn't cancelled for some reason?
+                                cancel();
+                            }
+                        }
+                    }.runTaskTimer(BukkitPlugin.this, 20L, 3 * 20L));
+                }
             }
         }
 
         @EventHandler
         public void onPlayerQuit(PlayerQuitEvent event) {
-            System.clearProperty(ACTIONBAR_DELAY_KEY + ":" + event.getPlayer().getName());
+            BukkitTask infoTask = infoTasks.remove(event.getPlayer().getUniqueId());
+            if (infoTask != null) {
+                infoTask.cancel();
+            }
         }
     }
 
