@@ -19,8 +19,8 @@ package de.themoep.bukkitplugin;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.io.ByteArrayDataOutput;
-import com.google.common.io.ByteStreams;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.apache.commons.lang.WordUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -32,6 +32,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.server.PluginDisableEvent;
+import org.bukkit.permissions.Permission;
+import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.JavaPluginLoader;
@@ -43,16 +45,20 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.UUID;
 
 public abstract class BukkitPlugin extends JavaPlugin implements Listener {
 
     private Timer timer;
     private boolean enableCalled = false;
-    private static final String INFO_CHANNEL = "bukkitplugin:info";
+    private static final String DISPLAY_TYPE_KEY = "bukkitplugin.license.display";
+    private static final String ACTIONBAR_DELAY_KEY = "bukkitplugin.license.actionbardelay";
 
     private boolean informUser = false;
     private String license = null;
+    private String licenseTerms = null;
     private String sourceLink = null;
+    private String commandAlias;
 
     public BukkitPlugin() {
         super();
@@ -65,6 +71,8 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
     }
 
     private void init() {
+        commandAlias = getName().toLowerCase(Locale.ROOT);
+
         timer = new Timer();
         // Schedule task to run five minutes in the future to check enable status
         timer.schedule(new TimerTask() {
@@ -85,6 +93,7 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
 
             informUser = descriptionConfig.getBoolean("inform-user");
             license = descriptionConfig.getString("license");
+            licenseTerms = descriptionConfig.getString("license-terms");
             sourceLink = descriptionConfig.getString("source");
         }
     }
@@ -95,14 +104,43 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
         saveDefaultConfig();
         reloadConfig();
         loadConfig();
-        getServer().getMessenger().registerOutgoingPluginChannel(this, INFO_CHANNEL);
-        getServer().getMessenger().registerIncomingPluginChannel(this, INFO_CHANNEL, (channel, player, data) -> sendInfo(player));
         getServer().getPluginManager().registerEvents(this, this);
         PluginCommand command = getCommand(getName().toLowerCase(Locale.ROOT));
+        if (getLicense() != null) {
+            getLogger().info("This plugin is licensed under the terms of the " + getLicense() + ".");
+        }
         if (command != null && command.getPlugin() == this) {
             command.setExecutor(this);
+            commandAlias = command.getName();
+            for (String alias : command.getAliases()) {
+                if (alias.length() < commandAlias.length()) {
+                    commandAlias = alias;
+                }
+            }
+            getLogger().info("More info about the plugin" + (getSourceLink() != null ? " like the source" : "") + ": /" + command.getName() + " info");
+            if (shouldInformUser() && command.getPermission() != null) {
+                Permission permission = getServer().getPluginManager().getPermission(command.getPermission());
+                if (permission == null) {
+                    getServer().getPluginManager().addPermission(new Permission(command.getPermission(), PermissionDefault.TRUE));
+                } else if (!permission.getDefault().getValue(false)) {
+                    getLogger().warning("Potentially permission default for command permission '" + permission.getName() + "'!" +
+                            "Normal players need to access that plugin to comply with the license requirements. Please make sure to grant it to them!");
+                }
+            }
         } else {
-            getLogger().severe("Unable to register plugin as it was not defined in the plugin.yml?");
+            if (getLicenseTerms() != null) {
+                for (String line : getLicenseTerms().split("\n")) {
+                    getLogger().info(line);
+                }
+            }
+            if (getSourceLink() != null) {
+                getLogger().info("The source is available at " + getSourceLink());
+            }
+            getLogger().severe("Unable to register plugin command as it was not defined in the plugin.yml?");
+            if (shouldInformUser()) {
+                getLogger().severe("Plugin requires that the user has access to more information so the info command is required!");
+                getServer().getScheduler().runTaskLater(this, () -> getServer().getPluginManager().disablePlugin(this), 1);
+            }
         }
     }
 
@@ -112,7 +150,12 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
             if ("info".equalsIgnoreCase(args[0]) || "license".equalsIgnoreCase(args[0])) {
                 for (Map.Entry<String, String> entry : getPluginInfo().entrySet()) {
                     if (entry.getValue() != null) {
-                        sender.sendMessage(ChatColor.GRAY + WordUtils.capitalizeFully(entry.getKey()) + ": " + ChatColor.WHITE + entry.getValue());
+                        String key = WordUtils.capitalizeFully(entry.getKey().replace('-', ' '));
+                        if (entry.getValue().split("\n").length == 1) {
+                            sender.sendMessage(ChatColor.GRAY + key + ": " + ChatColor.WHITE + entry.getValue());
+                        } else {
+                            sender.sendMessage(ChatColor.GRAY + key + ":\n" + ChatColor.WHITE + entry.getValue());
+                        }
                     }
                 }
                 return true;
@@ -131,14 +174,34 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
         return false;
     }
 
+    /**
+     * Whether the usage of this plugin and it's terms should be sent to every user of the server (e.g. AGPL requires that)
+     * @return Whether the usage of this plugin and it's terms should be sent to every user of the server
+     */
     public boolean shouldInformUser() {
         return informUser;
     }
 
+    /**
+     * Get the name of the license that this plugin is using
+     * @return The name of the license
+     */
     public String getLicense() {
         return license;
     }
 
+    /**
+     * Get the display terms of this license (most likely some short form pointing to the full one)
+     * @return The display terms of the license
+     */
+    public String getLicenseTerms() {
+        return licenseTerms;
+    }
+
+    /**
+     * Get the link to the source code of the plugin binary
+     * @return Get the link to the source code of the plugin binary
+     */
     public String getSourceLink() {
         return sourceLink;
     }
@@ -152,28 +215,29 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
                 "contributors", String.join(", ", getDescription().getContributors()),
                 "description", getDescription().getDescription(),
                 "website", getDescription().getWebsite(),
+                "source", getSourceLink(),
                 "license", getLicense(),
-                "source", getSourceLink()
+                "license-terms", getLicenseTerms()
         );
-    }
-
-    private void sendInfo(Player player) {
-        ByteArrayDataOutput out = ByteStreams.newDataOutput();
-
-        for (Map.Entry<String, String> entry : getPluginInfo().entrySet()) {
-            if (entry.getValue() != null) {
-                out.writeUTF(entry.getKey());
-                out.writeUTF(entry.getValue());
-            }
-        }
-
-        player.sendPluginMessage(this, INFO_CHANNEL, out.toByteArray());
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        if (shouldInformUser()) {
-            sendInfo(event.getPlayer());
+        if (getLicense() != null && shouldInformUser()) {
+            String message = ChatColor.DARK_GRAY + "Using " + ChatColor.GRAY + getName() + ChatColor.DARK_GRAY + " licensed under " + ChatColor.GRAY + getLicense() + ChatColor.DARK_GRAY + ". More info: " + ChatColor.GRAY + "/" + commandAlias + " info";
+            if ("chat".equals(System.getProperty(DISPLAY_TYPE_KEY))) {
+                event.getPlayer().sendMessage(message);
+            } else {
+                int delay = Integer.getInteger(ACTIONBAR_DELAY_KEY, 1);
+                System.setProperty(ACTIONBAR_DELAY_KEY, String.valueOf(delay + 1));
+                UUID playerId = event.getPlayer().getUniqueId();
+                getServer().getScheduler().runTaskLater(this, () -> {
+                    Player player = getServer().getPlayer(playerId);
+                    if (player != null) {
+                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message));
+                    }
+                }, delay * 3 * 20L);
+            }
         }
     }
 
