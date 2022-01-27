@@ -18,7 +18,6 @@ package de.themoep.bukkitplugin;
  */
 
 import com.google.common.base.Charsets;
-import com.google.common.collect.ImmutableMap;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.apache.commons.lang.WordUtils;
@@ -47,6 +46,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -125,7 +125,9 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
                     commandAlias = alias;
                 }
             }
-            getLogger().info("More info about the plugin" + (getSourceLink() != null ? " like the source" : "") + ": /" + command.getName() + " info");
+            if (getLicenseTerms() != null || getSourceLink() != null) {
+                getLogger().info("More info about the plugin" + (getSourceLink() != null ? " like the source" : "") + ": /" + command.getName() + " info");
+            }
             if (shouldInformUser()) {
                 getServer().getPluginManager().registerEvents(new InfoListener(), this);
                 loginMessage = ChatColor.DARK_GRAY + "Using " + ChatColor.GRAY + getName() + ChatColor.DARK_GRAY
@@ -150,8 +152,8 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
             if (getSourceLink() != null) {
                 getLogger().info("The source is available at " + getSourceLink());
             }
-            getLogger().severe("Unable to register plugin command as it was not defined in the plugin.yml?");
             if (shouldInformUser()) {
+                getLogger().severe("Unable to register plugin command as it was not defined in the plugin.yml?");
                 getLogger().severe("Plugin requires that the user has access to more information so the info command is required!");
                 getServer().getScheduler().runTaskLater(this, () -> getServer().getPluginManager().disablePlugin(this), 1);
                 informUser = false;
@@ -222,18 +224,18 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
     }
 
     private Map<String, String> getPluginInfo() {
-        return ImmutableMap.of(
-                "name", getName(),
-                "provides", String.join(", ", getDescription().getProvides()),
-                "version", getDescription().getVersion(),
-                "authors", String.join(", ", getDescription().getAuthors()),
-                "contributors", String.join(", ", getDescription().getContributors()),
-                "description", getDescription().getDescription(),
-                "website", getDescription().getWebsite(),
-                "source", getSourceLink(),
-                "license", getLicense(),
-                "license-terms", getLicenseTerms()
-        );
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("name", getName());
+        map.put("provides", String.join(", ", getDescription().getProvides()));
+        map.put("version", getDescription().getVersion());
+        map.put("authors", String.join(", ", getDescription().getAuthors()));
+        map.put("contributors", String.join(", ", getDescription().getContributors()));
+        map.put("description", getDescription().getDescription());
+        map.put("website", getDescription().getWebsite());
+        map.put("source", getSourceLink());
+        map.put("license", getLicense());
+        map.put("license-terms", getLicenseTerms());
+        return map;
     }
 
     public class InfoListener implements Listener {
