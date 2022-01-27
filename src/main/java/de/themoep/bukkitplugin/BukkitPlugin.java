@@ -187,6 +187,7 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
             } else {
                 sender.sendMessage(ChatColor.YELLOW + "Error while reloading " + getName() + "!");
             }
+            return true;
         }
         return false;
     }
