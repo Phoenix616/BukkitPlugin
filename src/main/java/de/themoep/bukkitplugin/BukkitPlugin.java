@@ -166,7 +166,7 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
         if (shouldInformUser() || sender.hasPermission(getName().toLowerCase(Locale.ROOT) + ".command.info")) {
             if ("info".equalsIgnoreCase(args[0]) || "license".equalsIgnoreCase(args[0])) {
                 for (Map.Entry<String, String> entry : getPluginInfo().entrySet()) {
-                    if (entry.getValue() != null) {
+                    if (entry.getValue() != null && !entry.getValue().isEmpty()) {
                         String key = WordUtils.capitalizeFully(entry.getKey().replace('-', ' '));
                         if (entry.getValue().split("\n").length == 1) {
                             sender.sendMessage(ChatColor.GRAY + key + ": " + ChatColor.WHITE + entry.getValue());
