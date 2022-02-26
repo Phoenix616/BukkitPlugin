@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
+import java.util.logging.Level;
 
 public abstract class BukkitPlugin extends JavaPlugin implements Listener {
 
@@ -67,6 +68,8 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
     private String sourceLink = null;
     private String commandAlias;
     private String loginMessage;
+
+    private boolean debug = true;
 
     public BukkitPlugin() {
         super();
@@ -109,9 +112,7 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         enableCalled = true;
-        saveDefaultConfig();
-        reloadConfig();
-        loadConfig();
+        loadOwnConfig();
         getServer().getPluginManager().registerEvents(this, this);
         PluginCommand command = getCommand(getName().toLowerCase(Locale.ROOT));
         if (getLicense() != null) {
@@ -180,9 +181,7 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
         }
 
         if ("reload".equalsIgnoreCase(args[0]) && sender.hasPermission(getName().toLowerCase(Locale.ROOT) + ".command.reload")) {
-            saveDefaultConfig();
-            reloadConfig();
-            if (loadConfig()) {
+            if (loadOwnConfig()) {
                 sender.sendMessage(ChatColor.GREEN + getName() + " config successfully reloaded!");
             } else {
                 sender.sendMessage(ChatColor.YELLOW + "Error while reloading " + getName() + "!");
@@ -297,6 +296,32 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
                 timer.cancel();
             }
         }
+    }
+
+    /**
+     * Log a debug message
+     * @param message The message to log
+     */
+    public void logDebug(String message) {
+        logDebug(message, null);
+    }
+
+    /**
+     * Log a debug message
+     * @param message The message to log
+     * @param throwable A throwable which's stack to print too
+     */
+    public void logDebug(String message, Throwable throwable) {
+        if (debug) {
+            getLogger().log(Level.INFO, "[DEBUG] " + message, throwable);
+        }
+    }
+
+    private boolean loadOwnConfig() {
+        saveDefaultConfig();
+        reloadConfig();
+        debug = getConfig().getBoolean("debug", debug);
+        return loadConfig();
     }
 
     /**
