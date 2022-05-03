@@ -55,7 +55,7 @@ import java.util.TimerTask;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public abstract class BukkitPlugin extends JavaPlugin implements Listener {
+public abstract class BukkitPlugin extends JavaPlugin {
 
     private Timer timer;
     private boolean enableCalled = false;
@@ -113,7 +113,16 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
     public void onEnable() {
         enableCalled = true;
         loadOwnConfig();
-        getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onPluginDisable(PluginDisableEvent event) {
+                if (event.getPlugin() == BukkitPlugin.this) {
+                    if (timer != null) {
+                        timer.cancel();
+                    }
+                }
+            }
+        }, this);
         PluginCommand command = getCommand(getName().toLowerCase(Locale.ROOT));
         if (getLicense() != null) {
             getLogger().info("This plugin is licensed under the terms of the " + getLicense() + ".");
@@ -285,15 +294,6 @@ public abstract class BukkitPlugin extends JavaPlugin implements Listener {
             BukkitTask infoTask = infoTasks.remove(event.getPlayer().getUniqueId());
             if (infoTask != null) {
                 infoTask.cancel();
-            }
-        }
-    }
-
-    @EventHandler
-    public void onPluginDisable(PluginDisableEvent event) {
-        if (event.getPlugin() == this) {
-            if (timer != null) {
-                timer.cancel();
             }
         }
     }
