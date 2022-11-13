@@ -173,6 +173,9 @@ public abstract class BukkitPlugin extends JavaPlugin {
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+        if (args.length == 0) {
+            return false;
+        }
         if (shouldInformUser() || sender.hasPermission(getName().toLowerCase(Locale.ROOT) + ".command.info")) {
             if ("info".equalsIgnoreCase(args[0]) || "license".equalsIgnoreCase(args[0])) {
                 for (Map.Entry<String, String> entry : getPluginInfo().entrySet()) {
