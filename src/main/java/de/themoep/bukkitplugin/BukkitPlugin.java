@@ -152,8 +152,8 @@ public abstract class BukkitPlugin extends JavaPlugin {
                     if (permission == null) {
                         getServer().getPluginManager().addPermission(new Permission(command.getPermission(), PermissionDefault.TRUE));
                     } else if (!permission.getDefault().getValue(false)) {
-                        getLogger().warning("Potentially permission default for command permission '" + permission.getName() + "'!" +
-                                "Normal players need to access that plugin to comply with the license requirements. Please make sure to grant it to them!");
+                        getLogger().warning("Potential error in permission default for command permission '" + permission.getName() + "'!" +
+                                "Normal players need to access that plugin command to comply with the license requirements. Please make sure to grant it to them!");
                     }
                 }
             }
