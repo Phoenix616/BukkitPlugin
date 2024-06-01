@@ -332,6 +332,31 @@ public abstract class BukkitPlugin extends JavaPlugin {
     }
 
     /**
+     * Run a task synchronously on the main thread.
+     * If the current thread is the main thread, the task will be run immediately
+     *
+     * @param runnable The task to run
+     * @return The task that was scheduled or <code>null</code> if it was run immediately
+     */
+    public BukkitTask runSync(Runnable runnable) {
+        if (getServer().isPrimaryThread()) {
+            runnable.run();
+            return null;
+        }
+        return getServer().getScheduler().runTask(this, runnable);
+    }
+
+    /**
+     * Run a task asynchronously on another thread
+     *
+     * @param runnable The task to run
+     * @return The task that was scheduled
+     */
+    public BukkitTask runAsync(Runnable runnable) {
+        return getServer().getScheduler().runTaskAsynchronously(this, runnable);
+    }
+
+    /**
      * Load values from the config
      * @return Whether the config was successfully loaded
      */
