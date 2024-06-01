@@ -14,7 +14,7 @@ The library extends the plugin.yml file format with some additional fields that 
 | `contributors`  | The contributors to the plugin.                                     |
 | `license`       | The license name of the plugin.                                     |
 | `license-terms` | The license terms of the plugin.                                    |
-| `inform-users`  | Whether to inform users of the plugin about the license and source. |
+| `inform-user`   | Whether to inform users of the plugin about the license and source. |
 | `source`        | The source code URL of the plugin.                                  |
 
 ## Usage
