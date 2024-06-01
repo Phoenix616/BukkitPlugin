@@ -136,7 +136,11 @@ public abstract class BukkitPlugin extends JavaPlugin {
                 }
             }
             if (getLicenseTerms() != null || getSourceLink() != null) {
-                getLogger().info("More info about the plugin" + (getSourceLink() != null ? " like the source" : "") + ": /" + command.getName() + " info");
+                if (getLicenseTerms() != null) {
+                    getLogger().info("More info about the plugin like the license " + (getSourceLink() != null ? " and the source" : "") + ": /" + command.getName() + " info");
+                } else {
+                    getLogger().info("More info about the plugin like the source: /" + command.getName() + " info");
+                }
             }
             if (shouldInformUser()) {
                 getServer().getPluginManager().registerEvents(new InfoListener(), this);
