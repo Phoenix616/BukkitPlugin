@@ -1,3 +1,10 @@
+> [!CAUTION]
+> ## Repository is archived as I'm leaving GitHub!
+>
+> GitHub wants me to "[embrace AI or get out](https://www.businessinsider.com/github-ceo-developers-embrace-ai-or-get-out-2025-8)". So I'm leaving.
+> 
+> Continued development will happen on Codeberg: https://codeberg.org/Phoenix616/BukkitPlugin
+
 # BukkitPlugin
 
 This is a library to make Bukkit plugin development easier. It is a wrapper around the Bukkit API that provides a more
